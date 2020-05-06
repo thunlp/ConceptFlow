@@ -33,7 +33,7 @@ pytorch-pretrained-bert==0.6.2
 pytz==2018.4
 PyYAML==3.12
 regex==2019.6.8
-requests==2.18.4
+requests==2.20.0
 s3transfer==0.2.1
 scipy==1.0.1
 singledispatch==3.4.0.3
