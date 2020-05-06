@@ -19,7 +19,7 @@ kiwisolver==1.0.1
 matplotlib==2.2.2
 mkl-fft==1.0.0
 mkl-random==1.0.1
-nltk==3.2.5
+nltk==3.4.5
 numpy==1.14.2
 olefile==0.45.1
 Pillow==5.0.0
