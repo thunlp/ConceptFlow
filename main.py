@@ -144,7 +144,8 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, is_test = 
 
     for iteration in range(len(data_test) // config.batch_size):
         
-        decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, local_neg_num, only_two_neg_num, selector = train(model, data_test[(iteration * config.batch_size):(iteration * config.batch_size + config.batch_size)], config, word2id, entity2id, model.is_inference)
+        decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, \
+            local_neg_num, only_two_neg_num, selector = run(model, data_test[(iteration * config.batch_size):(iteration * config.batch_size + config.batch_size)], config, word2id, entity2id, model.is_inference)
         sentence_ppx_loss += torch.sum(sentence_ppx).data
         sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
         sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
@@ -160,10 +161,16 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, is_test = 
         
     model.is_inference = False
     if model_path != None:
-        print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
+        print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), \
+            np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) \
+            - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
         exit()
-    print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
-    return np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut)))
+    print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / \
+        (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), \
+        np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
+    return np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), \
+        np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / \
+        (len(data_test) - int(only_two_cut)))
 
 def main():
     config = Config('config.yml')
