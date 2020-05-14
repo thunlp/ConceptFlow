@@ -3,7 +3,6 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 import torch.nn as nn
-import time
 from torch.nn import utils as nn_utils
 
 VERY_SMALL_NUMBER = 1e-10
@@ -19,7 +18,7 @@ class ConceptFlow(nn.Module):
     def __init__(self, config, word_embed, entity_embed):
         super(ConceptFlow, self).__init__()
         self.is_inference = False
-        ### Encoder
+        # Encoder
         self.fact_scale = config.fact_scale
         self.pagerank_lambda = config.pagerank_lambda
         self.trans_units = config.trans_units 
@@ -41,7 +40,6 @@ class ConceptFlow(nn.Module):
         self.entity_embedding.weight = nn.Parameter(use_cuda(torch.Tensor(entity_embed)))
         self.entity_embedding.weight.requires_grad = True
         self.entity_linear = nn.Linear(in_features = self.trans_units, out_features = self.trans_units)
-        self.only_two_entity_linear = nn.Linear(in_features = self.trans_units, out_features = self.trans_units)
 
         self.lstm_drop = nn.Dropout(p = config.lstm_dropout)
         self.linear_drop = nn.Dropout(p = config.linear_dropout)
@@ -76,21 +74,19 @@ class ConceptFlow(nn.Module):
             self.add_module('kb_tail_linear' + str(i), nn.Linear(in_features=self.trans_units, out_features=self.trans_units))
             self.add_module('kb_self_linear' + str(i), nn.Linear(in_features=self.trans_units, out_features=self.trans_units))
 
-        ### one_two_triple
+        # one_two_triple
         self.head_tail_linear = nn.Linear(in_features = self.trans_units * 2, out_features = self.trans_units)
         self.one_two_entity_linear = nn.Linear(in_features = self.trans_units, out_features = self.trans_units)
 
         # Loss
         self.logits_linear = nn.Linear(in_features = self.units, out_features = self.symbols)
         self.selector_linear = nn.Linear(in_features = self.units, out_features = 3)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, batch_data):
         query_text = batch_data['query_text']
         answer_text = batch_data['answer_text']
         local_entity = batch_data['local_entity']
         responses_length = batch_data['responses_length']
-        posts_length = batch_data['posts_length']
         q2e_adj_mat = batch_data['q2e_adj_mat']
         kb_adj_mat = batch_data['kb_adj_mat'] 
         kb_fact_rel = batch_data['kb_fact_rel']
@@ -98,8 +94,6 @@ class ConceptFlow(nn.Module):
         only_two_entity = batch_data['only_two_entity']
         match_entity_only_two = batch_data['match_entity_only_two']
         one_two_triples_id = batch_data['one_two_triples_id']
-        g2l_only_two_list = batch_data['g2l_only_two_list']
-        o2t_entity_index_list = batch_data['o2t_entity_index_list']
         local_entity_length = batch_data['local_entity_length']
         only_two_entity_length = batch_data['only_two_entity_length']
 
@@ -123,7 +117,6 @@ class ConceptFlow(nn.Module):
         kb_fact_rel = use_cuda(Variable(torch.from_numpy(kb_fact_rel).type('torch.LongTensor'), requires_grad=False))
         query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor'), requires_grad=False))
         answer_text = use_cuda(Variable(torch.from_numpy(answer_text).type('torch.LongTensor'), requires_grad=False))
-        posts_length = use_cuda(Variable(torch.Tensor(posts_length).type('torch.LongTensor'), requires_grad=False))
         responses_length = use_cuda(Variable(torch.Tensor(responses_length).type('torch.LongTensor'), requires_grad=False))
         query_mask = use_cuda((query_text != 0).type('torch.FloatTensor'))
         match_entity_one_hop = use_cuda(Variable(torch.from_numpy(match_entity_one_hop).type('torch.LongTensor'), requires_grad=False))
@@ -132,8 +125,8 @@ class ConceptFlow(nn.Module):
         one_two_triples_id = use_cuda(Variable(torch.from_numpy(one_two_triples_id).type('torch.LongTensor'), requires_grad=False))
 
         # normalized adj matrix
-        pagerank_f = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=True)) # batch_size, max_local_entity
-        q2e_adj_mat = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=False)) # batch_size, max_local_entity, 1
+        pagerank_f = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=True)) 
+        q2e_adj_mat = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=False)) 
         assert pagerank_f.requires_grad == True
 
         decoder_len = answer_text.shape[1]
@@ -142,16 +135,16 @@ class ConceptFlow(nn.Module):
         responses_id = torch.cat((use_cuda(torch.ones([batch_size, 1]).type('torch.LongTensor')),torch.split(answer_text, [decoder_len - 1, 1], 1)[0]), 1)
         
         # encode query
-        query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.trans_units)) # 1, batch_size, entity_dim
-        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
-        query_rel_emb = query_node_emb # batch_size, 1, entity_dim
+        query_word_emb = self.word_embedding(query_text) 
+        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.trans_units)) 
+        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) 
+        query_rel_emb = query_node_emb 
 
         # build kb_adj_matrix from sparse matrix
         (e2f_batch, e2f_f, e2f_e, e2f_val), (f2e_batch, f2e_e, f2e_f, f2e_val) = kb_adj_mat
         entity2fact_index = torch.LongTensor([e2f_batch, e2f_f, e2f_e])
         entity2fact_val = torch.FloatTensor(e2f_val)
-        entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) # batch_size, max_fact, max_local_entity
+        entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) 
         fact2entity_index = torch.LongTensor([f2e_batch, f2e_e, f2e_f])
         fact2entity_val = torch.FloatTensor(f2e_val)
         fact2entity_mat = use_cuda(torch.sparse.FloatTensor(fact2entity_index, fact2entity_val, torch.Size([batch_size, max_local_entity, max_fact])))
@@ -161,21 +154,21 @@ class ConceptFlow(nn.Module):
 
         # attention fact2question
         div = float(np.sqrt(self.trans_units))
-        fact2query_sim = torch.bmm(query_hidden_emb, local_fact_emb.transpose(1, 2)) / div # batch_size, max_query_word, max_fact
-        fact2query_sim = self.softmax_d1(fact2query_sim + (1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER) # batch_size, max_query_word, max_fact
+        fact2query_sim = torch.bmm(query_hidden_emb, local_fact_emb.transpose(1, 2)) / div 
+        fact2query_sim = self.softmax_d1(fact2query_sim + (1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER) 
             
-        fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2), dim=1) # batch_size, max_fact, entity_dim
+        fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2), dim=1) 
             
-        W = torch.sum(fact2query_att * local_fact_emb, dim=2) / div # batch_size, max_fact
-        W_max = torch.max(W, dim=1, keepdim=True)[0] # batch_size, 1
-        W_tilde = torch.exp(W - W_max) # batch_size, max_fact
-        e2f_softmax = self.sparse_bmm(entity2fact_mat.transpose(1, 2), W_tilde.unsqueeze(dim=2)).squeeze(dim=2) # batch_size, max_local_entity
+        W = torch.sum(fact2query_att * local_fact_emb, dim=2) / div 
+        W_max = torch.max(W, dim=1, keepdim=True)[0] 
+        W_tilde = torch.exp(W - W_max) 
+        e2f_softmax = self.sparse_bmm(entity2fact_mat.transpose(1, 2), W_tilde.unsqueeze(dim=2)).squeeze(dim=2) 
         e2f_softmax = torch.clamp(e2f_softmax, min=VERY_SMALL_NUMBER)
-        e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1), requires_grad=False)) # batch_size, max_local_entity
+        e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1), requires_grad=False)) 
         
         # load entity embedding
-        local_entity_emb = self.entity_embedding(local_entity) # batch_size, max_local_entity, word_dim
-        local_entity_emb = self.entity_linear(local_entity_emb) # batch_size, max_local_entity, entity_dim
+        local_entity_emb = self.entity_embedding(local_entity) 
+        local_entity_emb = self.entity_linear(local_entity_emb) 
    
         # label propagation on entities
         for i in range(self.gnn_layers):
@@ -195,33 +188,33 @@ class ConceptFlow(nn.Module):
 
             # STEP 1: propagate from question, documents, and facts to entities
             # question -> entity
-            q2e_emb = q2e_linear(self.linear_drop(query_node_emb)).expand(batch_size, max_local_entity, self.trans_units) # batch_size, max_local_entity, entity_dim
-            next_local_entity_emb = torch.cat((next_local_entity_emb, q2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 2
+            q2e_emb = q2e_linear(self.linear_drop(query_node_emb)).expand(batch_size, max_local_entity, self.trans_units) 
+            next_local_entity_emb = torch.cat((next_local_entity_emb, q2e_emb), dim=2) 
 
             # fact -> entity
-            e2f_emb = self.relu(kb_self_linear(local_fact_emb) + self.sparse_bmm(entity2fact_mat, kb_head_linear(self.linear_drop(local_entity_emb)))) # batch_size, max_fact, entity_dim
-            e2f_softmax_normalized = W_tilde.unsqueeze(dim=2) * self.sparse_bmm(entity2fact_mat, (pagerank_f / e2f_softmax).unsqueeze(dim=2)) # batch_size, max_fact, 1
-            e2f_emb = e2f_emb * e2f_softmax_normalized # batch_size, max_fact, entity_dim
+            e2f_emb = self.relu(kb_self_linear(local_fact_emb) + self.sparse_bmm(entity2fact_mat, kb_head_linear(self.linear_drop(local_entity_emb)))) 
+            e2f_softmax_normalized = W_tilde.unsqueeze(dim=2) * self.sparse_bmm(entity2fact_mat, (pagerank_f / e2f_softmax).unsqueeze(dim=2)) 
+            e2f_emb = e2f_emb * e2f_softmax_normalized 
             f2e_emb = self.relu(kb_self_linear(local_entity_emb) + self.sparse_bmm(fact2entity_mat, kb_tail_linear(self.linear_drop(e2f_emb))))
                 
-            pagerank_f = self.pagerank_lambda * self.sparse_bmm(fact2entity_mat, e2f_softmax_normalized).squeeze(dim=2) + (1 - self.pagerank_lambda) * pagerank_f # batch_size, max_local_entity
+            pagerank_f = self.pagerank_lambda * self.sparse_bmm(fact2entity_mat, e2f_softmax_normalized).squeeze(dim=2) + (1 - self.pagerank_lambda) * pagerank_f 
 
             # STEP 2: combine embeddings from fact
-            next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
+            next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb), dim=2) 
             
             # STEP 3: propagate from entities to update question, documents, and facts
             # entity -> query
             query_node_emb = torch.bmm(pagerank_f.unsqueeze(dim=1), e2q_linear(self.linear_drop(next_local_entity_emb)))
             # update entity
-            local_entity_emb = self.relu(e2e_linear(self.linear_drop(next_local_entity_emb))) # batch_size, max_local_entity, entity_dim   
+            local_entity_emb = self.relu(e2e_linear(self.linear_drop(next_local_entity_emb))) 
 
         text_encoder_input = self.word_embedding(query_text)
         text_encoder_output, text_encoder_state = self.text_encoder(text_encoder_input, use_cuda(Variable(torch.zeros(self.layers, batch_size, self.units))))
 
-        ######## encode_one_two_triple
+        # encode_one_two_triple
         one_two_triples_embedding = self.entity_embedding(one_two_triples_id).reshape([batch_size, one_two_triple_num, -1, 3 * self.trans_units])
         
-        #Grow graph embedding
+        # Grow graph embedding
         head, relation, tail = torch.split(one_two_triples_embedding, [self.trans_units] * 3, 3)
         head_tail = torch.cat((head, tail), 3)
         head_tail_transformed = torch.tanh(self.head_tail_linear(head_tail)) 
@@ -231,13 +224,13 @@ class ConceptFlow(nn.Module):
         e_weight = torch.sum(relation_transformed * head_tail_transformed, 3)
         alpha_weight = self.softmax_d2(e_weight)
         
-        one_two_embed = torch.sum(alpha_weight.unsqueeze(3) * head_tail, 2) # batch * one_two_triple_num * (num_trans_units * 2)
+        one_two_embed = torch.sum(alpha_weight.unsqueeze(3) * head_tail, 2) 
 
         
-        #################  Decoder
+        # decoder
         decoder_input = self.word_embedding(responses_id)
 
-        ### attention
+        # attention
         c_attention_keys = self.attn_c_linear(text_encoder_output)
         c_attention_values = text_encoder_output
 
@@ -246,7 +239,7 @@ class ConceptFlow(nn.Module):
         co_attention_keys, co_attention_values = torch.split(self.attn_co_linear(one_two_embed), [self.units, self.units], 2)
 
         only_two_entity_embed = self.entity_linear(self.entity_embedding(only_two_entity))
-        ct_attention_keys, ct_attention_values = torch.split(self.attn_ct_linear(only_two_entity_embed), [self.units, self.units], 2) #双跳entity
+        ct_attention_keys, ct_attention_values = torch.split(self.attn_ct_linear(only_two_entity_embed), [self.units, self.units], 2) 
 
         decoder_state = text_encoder_state
 
@@ -255,7 +248,7 @@ class ConceptFlow(nn.Module):
         co_alignments = use_cuda(torch.empty(0))
         ct_alignments = use_cuda(torch.empty(0)) 
 
-        ##### something about two hop
+        
         grow_entity = []
 
         local_entity_mask = np.zeros([batch_size, local_entity.shape[1]])
@@ -274,7 +267,9 @@ class ConceptFlow(nn.Module):
             decoder_input_t = torch.cat((decoder_input[:,t,:], context), 1).unsqueeze(1)
             
             decoder_output_t, decoder_state = self.decoder(decoder_input_t, decoder_state)
-            context, ce_alignments_t, co_alignments_t, ct_alignments_t = self.attention(t, c_attention_keys, c_attention_values, ce_attention_keys, ce_attention_values, co_attention_keys, co_attention_values, grow_entity, ct_attention_keys, ct_attention_values, decoder_output_t.squeeze(1), local_entity_mask, only_two_entity_mask)
+            context, ce_alignments_t, co_alignments_t, ct_alignments_t = self.attention(c_attention_keys, c_attention_values, \
+                ce_attention_keys, ce_attention_values, co_attention_keys, co_attention_values, ct_attention_keys, \
+                decoder_output_t.squeeze(1), local_entity_mask, only_two_entity_mask)
             decoder_output_t = context.unsqueeze(1)
             ce_alignments = torch.cat((ce_alignments, ce_alignments_t.unsqueeze(1)), 1)
             
@@ -292,10 +287,13 @@ class ConceptFlow(nn.Module):
             for t in range(decoder_len):
                 decoder_input_t = torch.cat((decoder_input_t, context), 1).unsqueeze(1)
                 decoder_output_t, decoder_state = self.decoder(decoder_input_t, decoder_state)
-                context, ce_alignments_t, co_alignments_t, ct_alignments_t = self.attention(t, c_attention_keys, c_attention_values, ce_attention_keys, ce_attention_values, co_attention_keys, co_attention_values, grow_entity, ct_attention_keys, ct_attention_values, decoder_output_t.squeeze(1), local_entity_mask, only_two_entity_mask)
+                context, ce_alignments_t, co_alignments_t, ct_alignments_t = self.attention(c_attention_keys, c_attention_values, \
+                    ce_attention_keys, ce_attention_values, co_attention_keys, co_attention_values, ct_attention_keys, \
+                    decoder_output_t.squeeze(1), local_entity_mask, only_two_entity_mask)
                 decoder_output_t = context.unsqueeze(1)
                 
-                decoder_input_t, word_index_t, selector_t = self.inference(decoder_output_t, ce_alignments_t, ct_alignments_t, word2id, local_entity, only_two_entity, id2entity)
+                decoder_input_t, word_index_t, selector_t = self.inference(decoder_output_t, ce_alignments_t, ct_alignments_t, word2id, \
+                    local_entity, only_two_entity, id2entity)
                 word_index = torch.cat((word_index, word_index_t.unsqueeze(1)), 1)
                 selector = torch.cat((selector, selector_t.unsqueeze(1)), 1)
         
@@ -325,10 +323,13 @@ class ConceptFlow(nn.Module):
                 
         use_entities_only_two = torch.sum(one_hot_entities_only_two, [2])
 
-        decoder_loss, ppx_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num = self.total_loss(decoder_output, responses_target, decoder_mask, ce_alignments, ct_alignments, use_entities_local, one_hot_entities_local, use_entities_only_two, one_hot_entities_only_two, only_two_entity_mask)
+        decoder_loss, ppx_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, \
+            word_neg_num, local_neg_num, only_two_neg_num = self.total_loss(decoder_output, responses_target, decoder_mask, \
+            ce_alignments, ct_alignments, use_entities_local, one_hot_entities_local, use_entities_only_two, one_hot_entities_only_two)
         
         if self.is_inference == True:
-            return decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index.cpu().numpy().tolist(), word_neg_num, local_neg_num, only_two_neg_num, selector.cpu().numpy().tolist()
+            return decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, \
+                word_index.cpu().numpy().tolist(), word_neg_num, local_neg_num, only_two_neg_num, selector.cpu().numpy().tolist()
         return decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num
 
     def inference(self, decoder_output_t, ce_alignments_t, ct_alignments_t, word2id, local_entity, only_two_entity, id2entity):
@@ -383,7 +384,8 @@ class ConceptFlow(nn.Module):
 
         return decoder_input_t, word_index_final_t, selector
 
-    def total_loss(self, decoder_output, responses_target, decoder_mask, ce_alignments, ct_alignments, use_entities_local, entity_targets_local, use_entities_only_two, entity_targets_only_two, only_two_entity_mask):
+    def total_loss(self, decoder_output, responses_target, decoder_mask, ce_alignments, ct_alignments, use_entities_local, \
+        entity_targets_local, use_entities_only_two, entity_targets_only_two):
         batch_size = decoder_output.shape[0]
         decoder_len = responses_target.shape[1]
         
@@ -408,7 +410,8 @@ class ConceptFlow(nn.Module):
         ppx_local = entity_prob_local * use_entities_local
         ppx_only_two = entity_prob_only_two * use_entities_only_two
 
-        final_prob = word_prob * selector_word * (1 - use_entities_local - use_entities_only_two) + entity_prob_local * selector_local * use_entities_local + entity_prob_only_two * selector_only_two * use_entities_only_two
+        final_prob = word_prob * selector_word * (1 - use_entities_local - use_entities_only_two) + entity_prob_local * selector_local * \
+            use_entities_local + entity_prob_only_two * selector_only_two * use_entities_only_two
         
         final_loss = torch.sum(- torch.log(1e-12 + final_prob).reshape([-1]) * local_masks)
 
@@ -417,7 +420,8 @@ class ConceptFlow(nn.Module):
         sentence_ppx_local = torch.sum((- torch.log(1e-12 + ppx_local).reshape([-1]) * local_masks_local).reshape([batch_size, -1]), 1)
         sentence_ppx_only_two = torch.sum((- torch.log(1e-12 + ppx_only_two).reshape([-1]) * local_masks_only_two).reshape([batch_size, -1]), 1)
         
-        selector_loss = torch.sum(- torch.log(1e-12 + selector_local * use_entities_local + selector_only_two * use_entities_only_two + selector_word * (1 - use_entities_local - use_entities_only_two)).reshape([-1]) * local_masks)
+        selector_loss = torch.sum(- torch.log(1e-12 + selector_local * use_entities_local + selector_only_two * use_entities_only_two + \
+            selector_word * (1 - use_entities_local - use_entities_only_two)).reshape([-1]) * local_masks)
         
         loss = final_loss + selector_loss
         total_size = torch.sum(local_masks)
@@ -439,11 +443,14 @@ class ConceptFlow(nn.Module):
         sum_local = sum_local + local_neg_mask
         sum_only_two = sum_only_two + only_two_neg_mask
 
-        return loss / total_size, 0, sentence_ppx / torch.sum(use_cuda(decoder_mask.type("torch.FloatTensor")), 1), sentence_ppx_word / sum_word, sentence_ppx_local / sum_local, sentence_ppx_only_two / sum_only_two, word_neg_num, local_neg_num, only_two_neg_num
+        return loss / total_size, 0, sentence_ppx / torch.sum(use_cuda(decoder_mask.type("torch.FloatTensor")), 1), \
+            sentence_ppx_word / sum_word, sentence_ppx_local / sum_local, sentence_ppx_only_two / sum_only_two, word_neg_num, \
+            local_neg_num, only_two_neg_num
         
         
 
-    def attention(self, t, c_attention_keys, c_attention_values, ce_attention_keys, ce_attention_values, co_attention_keys, co_attention_values, grow_entity, ct_attention_keys, ct_attention_values, decoder_state, local_entity_mask, only_two_entity_mask):
+    def attention(self, c_attention_keys, c_attention_values, ce_attention_keys, ce_attention_values, co_attention_keys, \
+        co_attention_values, ct_attention_keys, decoder_state, local_entity_mask, only_two_entity_mask):
         batch_size = ct_attention_keys.shape[0]
         only_two_len = ct_attention_keys.shape[1]
 

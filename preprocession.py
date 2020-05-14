@@ -23,7 +23,7 @@ def prepare_data(config):
     dict_csk_entities = d['dict_csk_entities']
     dict_csk_triples = d['dict_csk_triples']
     
-    data_train, data_dev, data_test = [], [], []
+    data_train, data_test = [], [], []
 
     if config.is_train:
         with open('%s/trainset.txt' % config.data_dir) as f:
@@ -34,14 +34,11 @@ def prepare_data(config):
                 data_train.append(json.loads(line))
 
     
-    with open('%s/validset.txt' % config.data_dir) as f:
-        for line in f:
-            data_dev.append(json.loads(line))
     with open('%s/testset.txt' % config.data_dir) as f:
         for line in f:
             data_test.append(json.loads(line))
     
-    return raw_vocab, data_train, data_dev, data_test
+    return raw_vocab, data_train, data_test
 
 def build_vocab(path, raw_vocab, config, trans='transE'):
 
@@ -127,7 +124,7 @@ def gen_batched_data(data, config, word2id, entity2id):
     posts_id = np.full((len(data), encoder_len), 0, dtype=int)
     responses_id = np.full((len(data), decoder_len), 0, dtype=int)
     responses_length = []
-    posts_length = []
+    # posts_length = []
     local_entity_length = []
     only_two_entity_length = []
     local_entity = []
@@ -139,7 +136,7 @@ def gen_batched_data(data, config, word2id, entity2id):
     match_entity_only_two = np.full((len(data), decoder_len), -1, dtype=int)
     one_two_triples_id = []
     g2l_only_two_list = []
-    o2t_entity_index_list = []
+    # o2t_entity_index_list = []
 
     def padding(sent, l):
         return sent + ['_EOS'] + ['_PAD'] * (l-len(sent)-1)
@@ -162,7 +159,7 @@ def gen_batched_data(data, config, word2id, entity2id):
 
     next_id = 0
     for item in data:
-        ####################### posts
+        # posts
         for i, post_word in enumerate(padding(item['post'], encoder_len)):
             if post_word in word2id:
                 posts_id[next_id, i] = word2id[post_word]
@@ -170,7 +167,7 @@ def gen_batched_data(data, config, word2id, entity2id):
             else:
                 posts_id[next_id, i] = word2id['_UNK']
 
-        ####################### responses
+        # responses
         for i, response_word in enumerate(padding(item['response'], decoder_len)):
             if response_word in word2id:
                 responses_id[next_id, i] = word2id[response_word]
@@ -178,13 +175,10 @@ def gen_batched_data(data, config, word2id, entity2id):
             else:
                 responses_id[next_id, i] = word2id['_UNK']
 
-        ####################### responses_length
+        # responses_length
         responses_length.append(len(item['response']) + 1)
 
-        ####################### posts_length
-        posts_length.append(len(item['post']) + 1)
-
-        ####################### local_entity
+        # local_entity
         local_entity_tmp = []
         for i in range(len(item['post_triples'])):
             if item['post_triples'][i] == 0:
@@ -207,7 +201,7 @@ def gen_batched_data(data, config, word2id, entity2id):
         local_entity_tmp += [1] * (entity_len - len(local_entity_tmp))
         local_entity.append(local_entity_tmp)
 
-        ####################### kb_adj_mat and kb_fact_rel
+        # kb_adj_mat and kb_fact_rel
         g2l = dict()
         for i in range(len(local_entity_tmp)):
             g2l[local_entity_tmp[i]] = i
@@ -235,7 +229,7 @@ def gen_batched_data(data, config, word2id, entity2id):
 
         kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int), np.array([1.0] * len(entity2fact_f))), (np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int), np.array([1.0] * len(fact2entity_e)))
         
-        ############################ q2e_adj_mat
+        # q2e_adj_mat
         for i in range(len(item['post_triples'])):
             if item['post_triples'][i] == 0:
                 continue
@@ -244,7 +238,7 @@ def gen_batched_data(data, config, word2id, entity2id):
             else:
                 q2e_adj_mats[next_id, g2l[entity2id[item['post'][i]]]] = 1
 
-        ############################ match_entity_one_hop
+        # match_entity_one_hop
         for i in range(len(item['match_response_index_one_hop'])):
             if item['match_response_index_one_hop'][i] == -1:
                 continue
@@ -255,7 +249,7 @@ def gen_batched_data(data, config, word2id, entity2id):
             else:
                 match_entity_one_hop[next_id, i] = g2l[entity2id[csk_entities[item['match_response_index_one_hop'][i]]]]
 
-        ############################ only_two_entity
+        # only_two_entity
         only_two_entity_tmp = []
         for entity_index in item['only_two']:
             if csk_entities[entity_index] not in entity2id:
@@ -268,8 +262,7 @@ def gen_batched_data(data, config, word2id, entity2id):
         only_two_entity_tmp += [1] * (only_two_entity_len - len(only_two_entity_tmp))
         only_two_entity.append(only_two_entity_tmp)
 
-
-        ############################ match_entity_two_hop
+        # match_entity_two_hop
         g2l_only_two = dict()
         for i in range(len(only_two_entity_tmp)):
             g2l_only_two[only_two_entity_tmp[i]] = i
@@ -282,29 +275,16 @@ def gen_batched_data(data, config, word2id, entity2id):
             else:
                 match_entity_only_two[next_id, i] = g2l_only_two[entity2id[csk_entities[item['match_response_index_only_two'][i]]]]
         
-
-        ############################ one_two_triple
+        # one_two_triple
         one_two_triples_id.append(padding_triple_id([[csk_triples[x].split(', ') for x in triple] for triple in item['one_two_triple']], triple_num_one_two, triple_len_one_two))
         
         ############################ g2l_only_two
         g2l_only_two_list.append(g2l_only_two)
 
-        ############################ o2t_entity_index_list
-        o2t_dict = dict()
-        for one_i in range(len(one_two_triples_id[next_id])):
-            o2t_two_set = set()
-            for two_i in range(len(one_two_triples_id[next_id][one_i])):
-                if one_two_triples_id[next_id][one_i][two_i][0] in only_two_entity[next_id]:
-                    o2t_two_set.add(g2l_only_two_list[next_id][one_two_triples_id[next_id][one_i][two_i][0]])
-                if one_two_triples_id[next_id][one_i][two_i][2] in only_two_entity[next_id]:
-                    o2t_two_set.add(g2l_only_two_list[next_id][one_two_triples_id[next_id][one_i][two_i][2]])
-            o2t_dict[one_i] = o2t_two_set
-        o2t_entity_index_list.append(o2t_dict)
-
-        ####################### local_entity_length
+        # local_entity_length
         local_entity_length.append(local_entity_len_tmp)
 
-        ####################### only_two_entity_length
+        # only_two_entity_length
         only_two_entity_length.append(only_two_entity_len_tmp)
 
         next_id += 1
@@ -344,7 +324,6 @@ def gen_batched_data(data, config, word2id, entity2id):
             'answer_text': np.array(responses_id), 
             'local_entity': np.array(local_entity),    
             'responses_length': responses_length, 
-            'posts_length': posts_length,
             'q2e_adj_mat': np.array(q2e_adj_mats),
             'kb_adj_mat': _build_kb_adj_mat(kb_adj_mats, config.fact_dropout),
             'kb_fact_rel': np.array(kb_fact_rels),
@@ -352,8 +331,6 @@ def gen_batched_data(data, config, word2id, entity2id):
             'only_two_entity': np.array(only_two_entity),
             'match_entity_only_two': np.array(match_entity_only_two),
             'one_two_triples_id': np.array(one_two_triples_id),
-            'g2l_only_two_list': g2l_only_two_list,
-            'o2t_entity_index_list': o2t_entity_index_list,
             'word2id': word2id,
             'entity2id': entity2id,
             'local_entity_length': local_entity_length,
