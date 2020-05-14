@@ -56,7 +56,7 @@ def run(model, data_train, config, word2id, entity2id, is_inference = False):
         decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num = model(batched_data)
         return decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num
 
-def train(config, model, data_train, word2id, entity2id, model_optimizer):
+def train(config, model, data_train, data_test, word2id, entity2id, model_optimizer):
     for epoch in range(config.num_epoch):
             print ("epoch: ", epoch)
             sentence_ppx_loss = 0
@@ -197,6 +197,6 @@ def main():
         evaluate(model, data_test, config, word2id, entity2id, 0, model_path = config.test_model_path)
         exit() 
     
-    train(config, model, data_train, word2id, entity2id, model_optimizer)
+    train(config, model, data_train, data_test, word2id, entity2id, model_optimizer)
 
 main()
