@@ -1,12 +1,6 @@
 #coding:utf-8
 import numpy as np
 import json
-import sys
-import math
-import os
-import time
-import random
-from model import ConceptFlow, use_cuda
 import torch
 
         
