@@ -69,7 +69,9 @@ def train(config, model, data_train, word2id, entity2id, model_optimizer):
 
             count = 0
             for iteration in range(len(data_train) // config.batch_size):
-                decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num = run(model, data_train[(iteration * config.batch_size):(iteration * config.batch_size + config.batch_size)], config, word2id, entity2id)
+                decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, \
+                    only_two_neg_num = run(model, data_train[(iteration * config.batch_size):(iteration * \
+                    config.batch_size + config.batch_size)], config, word2id, entity2id)
                 sentence_ppx_loss += torch.sum(sentence_ppx).data
                 sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
                 sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
