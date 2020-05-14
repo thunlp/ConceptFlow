@@ -49,7 +49,8 @@ def run(model, data_train, config, word2id, entity2id, is_inference = False):
     batched_data = gen_batched_data(data_train, config, word2id, entity2id)
     
     if model.is_inference == True:
-        decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, local_neg_num, only_two_neg_num, selector = model(batched_data)
+        decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, \
+            local_neg_num, only_two_neg_num, selector = model(batched_data)
         return decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, local_neg_num, only_two_neg_num, selector
     else:
         decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, only_two_neg_num = model(batched_data)
@@ -97,7 +98,8 @@ def train(config, model, data_train, word2id, entity2id, model_optimizer):
             torch.save(model.state_dict(), config.model_save_name + '_epoch_' + str(epoch + 1) + '.pkl')
             ppx, ppx_word, ppx_local, ppx_only_two = evaluate(model, data_test, config, word2id, entity2id, epoch + 1)
             ppx_f = open(config.result_dir_name,'a')
-            ppx_f.write("epoch " + str(epoch + 1) + " ppx: " + str(ppx) + " ppx_word: " + str(ppx_word) + " ppx_local: " + str(ppx_local) + " ppx_only_two: " + str(ppx_only_two) + '\n')
+            ppx_f.write("epoch " + str(epoch + 1) + " ppx: " + str(ppx) + " ppx_word: " + str(ppx_word) + " ppx_local: " + \
+                str(ppx_local) + " ppx_only_two: " + str(ppx_only_two) + '\n')
             ppx_f.close()
 
 def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, is_test = False, model_path = None):
@@ -150,7 +152,8 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, is_test = 
     for iteration in range(len(data_test) // config.batch_size):
         
         decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_index, word_neg_num, \
-            local_neg_num, only_two_neg_num, selector = run(model, data_test[(iteration * config.batch_size):(iteration * config.batch_size + config.batch_size)], config, word2id, entity2id, model.is_inference)
+            local_neg_num, only_two_neg_num, selector = run(model, data_test[(iteration * config.batch_size):(iteration * \
+            config.batch_size + config.batch_size)], config, word2id, entity2id, model.is_inference)
         sentence_ppx_loss += torch.sum(sentence_ppx).data
         sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
         sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
