@@ -3,7 +3,7 @@
 This is the implementation of ConceptFlow described in ACL 2020 paper [Grounded Conversation Generation as Guided Traverses in Commonsense Knowledge Graphs](https://arxiv.org/abs/1911.02707).
 
 ### Prerequisites
-The recommended way to install the required packages is using pip and the provided `requirements.yml` file. Create the environment by running the following command:
+The recommended way to install the required packages is using pip and the provided `requirements.txt` file. Create the environment by running the following command:
 ```
 pip install -r requirements.txt
 ```
