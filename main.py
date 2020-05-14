@@ -88,7 +88,10 @@ def train(config, model, data_train, word2id, entity2id, model_optimizer):
                     print ("iteration:", iteration, "Loss:", decoder_loss.data)
                 count += 1
             
-            print ("perplexity for epoch", epoch + 1, ":", np.exp(sentence_ppx_loss.cpu() / len(data_train)), " ppx_word: ", np.exp(sentence_ppx_word_loss.cpu() / (len(data_train) - int(word_cut))), " ppx_local: ", np.exp(sentence_ppx_local_loss.cpu() / (len(data_train) - int(local_cut))), " ppx_only_two: ", np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_train) - int(only_two_cut))))
+            print ("perplexity for epoch", epoch + 1, ":", np.exp(sentence_ppx_loss.cpu() / len(data_train)), " ppx_word: ", \
+                np.exp(sentence_ppx_word_loss.cpu() / (len(data_train) - int(word_cut))), " ppx_local: ", \
+                np.exp(sentence_ppx_local_loss.cpu() / (len(data_train) - int(local_cut))), " ppx_only_two: ", \
+                np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_train) - int(only_two_cut))))
             torch.save(model.state_dict(), config.model_save_name + '_epoch_' + str(epoch + 1) + '.pkl')
             ppx, ppx_word, ppx_local, ppx_only_two = evaluate(model, data_test, config, word2id, entity2id, epoch + 1)
             ppx_f = open(config.result_dir_name,'a')
