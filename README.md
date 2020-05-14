@@ -17,7 +17,7 @@ Download the above data and put them into the `./data` folder.
 
 To train model, edit `config.yml` and set `is_train: True`. 
 
-To test model, edit `config.yml` and set `is_train: False`. Set `test_model_path: 'Your Model Path'. 
+To test model, edit `config.yml` and set `is_train: False`. Set `test_model_path: 'Your Model Path'`. 
 
 After the setting, all left is to run the following command:
 
