@@ -2,6 +2,7 @@
 import numpy as np
 import json
 import torch
+from utils import padding, padding_triple_id, build_kb_adj_mat
 
         
 def prepare_data(config):
@@ -20,7 +21,7 @@ def prepare_data(config):
     data_train, data_test = [], []
 
     if config.is_train:
-        with open('%s/trainset.txt' % config.data_dir) as f:
+        with open('%s/testset.txt' % config.data_dir) as f:
             for idx, line in enumerate(f):
                 if idx == 25: break
 
@@ -131,25 +132,6 @@ def gen_batched_data(data, config, word2id, entity2id):
     one_two_triples_id = []
     g2l_only_two_list = []
     # o2t_entity_index_list = []
-
-    def padding(sent, l):
-        return sent + ['_EOS'] + ['_PAD'] * (l-len(sent)-1)
-
-    def padding_triple_id(triple, num, l):   
-        newtriple = []
-        for i in range(len(triple)):
-            for j in range(len(triple[i])):
-                for k in range(len(triple[i][j])):
-                    if triple[i][j][k] in entity2id:
-                        triple[i][j][k] = entity2id[triple[i][j][k]]
-                    else:
-                        triple[i][j][k] = entity2id['_NONE']
-
-        #triple = [[[entity2id['_NAF_H'], entity2id['_NAF_R'], entity2id['_NAF_T']]]] + triple
-        for tri in triple:
-            newtriple.append(tri + [[entity2id['_PAD_H'], entity2id['_PAD_R'], entity2id['_PAD_T']]] * (l - len(tri)))
-        pad_triple = [[entity2id['_PAD_H'], entity2id['_PAD_R'], entity2id['_PAD_T']]] * l
-        return newtriple + [pad_triple] * (num - len(newtriple))
 
     next_id = 0
     for item in data:
@@ -270,7 +252,7 @@ def gen_batched_data(data, config, word2id, entity2id):
                 match_entity_only_two[next_id, i] = g2l_only_two[entity2id[csk_entities[item['match_response_index_only_two'][i]]]]
         
         # one_two_triple
-        one_two_triples_id.append(padding_triple_id([[csk_triples[x].split(', ') for x in triple] for triple in item['one_two_triple']], triple_num_one_two, triple_len_one_two))
+        one_two_triples_id.append(padding_triple_id(entity2id, [[csk_triples[x].split(', ') for x in triple] for triple in item['one_two_triple']], triple_num_one_two, triple_len_one_two))
         
         ############################ g2l_only_two
         g2l_only_two_list.append(g2l_only_two)
@@ -283,43 +265,12 @@ def gen_batched_data(data, config, word2id, entity2id):
 
         next_id += 1
 
-    def _build_kb_adj_mat(kb_adj_mats, fact_dropout):
-        """Create sparse matrix representation for batched data"""
-        mats0_batch = np.array([], dtype=int)
-        mats0_0 = np.array([], dtype=int)
-        mats0_1 = np.array([], dtype=int)
-        vals0 = np.array([], dtype=float)
-
-        mats1_batch = np.array([], dtype=int)
-        mats1_0 = np.array([], dtype=int)
-        mats1_1 = np.array([], dtype=int)
-        vals1 = np.array([], dtype=float)
-
-        for i in range(kb_adj_mats.shape[0]):
-            (mat0_0, mat0_1, val0), (mat1_0, mat1_1, val1) = kb_adj_mats[i]
-            assert len(val0) == len(val1)
-            num_fact = len(val0)
-            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
-            mask_index = np.random.permutation(num_fact)[ : num_keep_fact]
-            # mat0
-            mats0_batch = np.append(mats0_batch, np.full(len(mask_index), i, dtype=int))
-            mats0_0 = np.append(mats0_0, mat0_0[mask_index])
-            mats0_1 = np.append(mats0_1, mat0_1[mask_index])
-            vals0 = np.append(vals0, val0[mask_index])
-            # mat1
-            mats1_batch = np.append(mats1_batch, np.full(len(mask_index), i, dtype=int))
-            mats1_0 = np.append(mats1_0, mat1_0[mask_index])
-            mats1_1 = np.append(mats1_1, mat1_1[mask_index])
-            vals1 = np.append(vals1, val1[mask_index])
-
-        return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
-
     batched_data = {'query_text': np.array(posts_id), 
             'answer_text': np.array(responses_id), 
             'local_entity': np.array(local_entity),    
             'responses_length': responses_length, 
             'q2e_adj_mat': np.array(q2e_adj_mats),
-            'kb_adj_mat': _build_kb_adj_mat(kb_adj_mats, config.fact_dropout),
+            'kb_adj_mat': build_kb_adj_mat(kb_adj_mats, config.fact_dropout),
             'kb_fact_rel': np.array(kb_fact_rels),
             'match_entity_one_hop': np.array(match_entity_one_hop),
             'only_two_entity': np.array(only_two_entity),

@@ -1,4 +1,5 @@
 is_train: True
+is_select: False
 test_model_path: None
 embed_units: 300
 symbols: 30000
@@ -16,6 +17,5 @@ gnn_layers: 3
 fact_dropout: 0.0
 fact_scale: 1
 pagerank_lambda: 0.8
-result_dir_name: "result.txt"
-model_save_name: "model"
-generated_text_name: "generated_text"
+result_dir_name: "training_output"
+generated_path: "inference_output"
