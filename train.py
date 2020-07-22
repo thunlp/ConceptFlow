@@ -85,7 +85,7 @@ def train(config, model, data_train, data_test, word2id, entity2id, model_optimi
                 torch.nn.utils.clip_grad_norm(model.parameters(), config.max_gradient_norm)
                 model_optimizer.step()
                 
-                if count % 1 == 0:
+                if count % 50 == 0:
                     print ("iteration:", iteration, "Loss:", decoder_loss.data)
                 count += 1
             

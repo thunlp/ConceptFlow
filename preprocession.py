@@ -21,10 +21,8 @@ def prepare_data(config):
     data_train, data_test = [], []
 
     if config.is_train:
-        with open('%s/testset.txt' % config.data_dir) as f:
+        with open('%s/trainset.txt' % config.data_dir) as f:
             for idx, line in enumerate(f):
-                if idx == 25: break
-
                 if idx % 100000 == 0: print('read train file line %d' % idx)
                 data_train.append(json.loads(line))
 

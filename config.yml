@@ -5,7 +5,7 @@ embed_units: 300
 symbols: 30000
 units: 512
 layers: 2
-batch_size: 5
+batch_size: 30
 data_dir: "data"
 num_epoch: 20
 lr_rate: 0.0001
