@@ -9,7 +9,7 @@ The recommended way to install the required packages is using pip and the provid
 
 
 ### Download Dataset
-* Due to the policy of Reddit, we are not able to release the data in a public repo. Please send email to ```hzhan148@cs.brown.edu``` to request data.
+* Due to the policy of Reddit, we are not able to release the data in a public repo. Please send email to ```craigie.zhang@gmail.com``` to request data.
 * By default, we expect the data to be stored in `./data`.
 
 
