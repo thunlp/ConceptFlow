@@ -2,7 +2,7 @@
 import numpy as np
 import json
 from model import ConceptFlow, use_cuda
-from preprocession import prepare_data, build_vocab, gen_batched_data
+from preprocession import prepare_data, build_vocab, get_data
 import torch
 import warnings
 import yaml
@@ -44,9 +44,7 @@ class Config():
             print('%s = %s' % (name, value))
         
 
-def run(model, data_train, config, word2id, entity2id):
-    batched_data = gen_batched_data(data_train, config, word2id, entity2id)
-    
+def run(model, batched_data):
     if model.is_inference == True:
         word_index, selector = model(batched_data)
         return word_index, selector
@@ -67,10 +65,9 @@ def train(config, model, data_train, data_test, word2id, entity2id, model_optimi
             only_two_cut = use_cuda(torch.Tensor([0]))
 
             count = 0
-            for iteration in range(len(data_train) // config.batch_size):
+            for iteration, batch in enumerate(data_train):
                 decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, \
-                    only_two_neg_num = run(model, data_train[(iteration * config.batch_size):(iteration * \
-                    config.batch_size + config.batch_size)], config, word2id, entity2id)
+                    only_two_neg_num = run(model, batch, config, word2id, entity2id)
                 sentence_ppx_loss += torch.sum(sentence_ppx).data
                 sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
                 sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
@@ -117,11 +114,10 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, model_path
         id2word[word2id[key]] = key
 
 
-    for iteration in range(len(data_test) // config.batch_size):
+    for iteration, batch in enumerate(data_test):
         
         decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, \
-            local_neg_num, only_two_neg_num = run(model, data_test[(iteration * config.batch_size):(iteration * \
-            config.batch_size + config.batch_size)], config, word2id, entity2id)
+            local_neg_num, only_two_neg_num = run(model, batch, config, word2id, entity2id)
         sentence_ppx_loss += torch.sum(sentence_ppx).data
         sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
         sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
@@ -151,8 +147,10 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, model_path
 def main():
     config = Config('config.yml')
     config.list_all_member()
-    raw_vocab, data_train, data_test = prepare_data(config)
+    raw_vocab = prepare_data(config)
     word2id, entity2id, vocab, embed, entity_vocab, entity_embed, relation_vocab, relation_embed, entity_relation_embed = build_vocab(config.data_dir, raw_vocab, config = config)  
+    data_train, data_test = get_data(config,word2id,entity2id)
+
     model = use_cuda(ConceptFlow(config, embed, entity_relation_embed))
 
     model_optimizer = torch.optim.Adam(model.parameters(), lr = config.lr_rate)   
