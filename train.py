@@ -64,10 +64,10 @@ def train(config, model, data_train, data_test, word2id, entity2id, model_optimi
             local_cut = use_cuda(torch.Tensor([0]))
             only_two_cut = use_cuda(torch.Tensor([0]))
 
-            count = 0
+            data_len = 0
             for iteration, batch in enumerate(data_train):
                 decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, local_neg_num, \
-                    only_two_neg_num = run(model, batch, config, word2id, entity2id)
+                    only_two_neg_num = run(model, batch)
                 sentence_ppx_loss += torch.sum(sentence_ppx).data
                 sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
                 sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
@@ -82,14 +82,14 @@ def train(config, model, data_train, data_test, word2id, entity2id, model_optimi
                 torch.nn.utils.clip_grad_norm(model.parameters(), config.max_gradient_norm)
                 model_optimizer.step()
                 
-                if count % 50 == 0:
+                if iteration % 50 == 0:
                     print ("iteration:", iteration, "Loss:", decoder_loss.data)
-                count += 1
+                data_len += len(batch['query_text'])
             
-            print ("perplexity for epoch", epoch + 1, ":", np.exp(sentence_ppx_loss.cpu() / len(data_train)), " ppx_word: ", \
-                np.exp(sentence_ppx_word_loss.cpu() / (len(data_train) - int(word_cut))), " ppx_local: ", \
-                np.exp(sentence_ppx_local_loss.cpu() / (len(data_train) - int(local_cut))), " ppx_only_two: ", \
-                np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_train) - int(only_two_cut))))
+            print ("perplexity for epoch", epoch + 1, ":", np.exp(sentence_ppx_loss.cpu() / data_len), " ppx_word: ", \
+                np.exp(sentence_ppx_word_loss.cpu() / (data_len - int(word_cut))), " ppx_local: ", \
+                np.exp(sentence_ppx_local_loss.cpu() / (data_len - int(local_cut))), " ppx_only_two: ", \
+                np.exp(sentence_ppx_only_two_loss.cpu() / (data_len - int(only_two_cut))))
 
             torch.save(model.state_dict(), config.result_dir_name + '/' + '_epoch_' + str(epoch + 1) + '.pkl')
             ppx, ppx_word, ppx_local, ppx_only_two = evaluate(model, data_test, config, word2id, entity2id, epoch + 1)
@@ -108,16 +108,15 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, model_path
     word_cut = use_cuda(torch.Tensor([0]))
     local_cut = use_cuda(torch.Tensor([0]))
     only_two_cut = use_cuda(torch.Tensor([0]))
-    count = 0
     id2word = dict()
     for key in word2id.keys():
         id2word[word2id[key]] = key
 
-
+    data_len = 0
     for iteration, batch in enumerate(data_test):
         
         decoder_loss, sentence_ppx, sentence_ppx_word, sentence_ppx_local, sentence_ppx_only_two, word_neg_num, \
-            local_neg_num, only_two_neg_num = run(model, batch, config, word2id, entity2id)
+            local_neg_num, only_two_neg_num = run(model, batch)
         sentence_ppx_loss += torch.sum(sentence_ppx).data
         sentence_ppx_word_loss += torch.sum(sentence_ppx_word).data
         sentence_ppx_local_loss += torch.sum(sentence_ppx_local).data
@@ -127,22 +126,22 @@ def evaluate(model, data_test, config, word2id, entity2id, epoch = 0, model_path
         local_cut += local_neg_num
         only_two_cut += only_two_neg_num
 
-        if count % 50 == 0:
+        if iteration % 50 == 0:
             print ("iteration for evaluate:", iteration, "Loss:", decoder_loss.data)
-        count += 1
+        data_len += len(batch['query_text'])
         
     model.is_inference = False
     if model_path != None:
-        print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), \
-            np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) \
-            - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
+        print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / data_len), \
+            np.exp(sentence_ppx_word_loss.cpu() / (data_len - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (data_len\
+            - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / (data_len - int(only_two_cut))))
         exit()
-    print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / \
-        (len(data_test) - int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), \
-        np.exp(sentence_ppx_only_two_loss.cpu() / (len(data_test) - int(only_two_cut))))
-    return np.exp(sentence_ppx_loss.cpu() / len(data_test)), np.exp(sentence_ppx_word_loss.cpu() / (len(data_test) - int(word_cut))), \
-        np.exp(sentence_ppx_local_loss.cpu() / (len(data_test) - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / \
-        (len(data_test) - int(only_two_cut)))
+    print('    perplexity on test set:', np.exp(sentence_ppx_loss.cpu() / data_len), np.exp(sentence_ppx_word_loss.cpu() / \
+        (data_len- int(word_cut))), np.exp(sentence_ppx_local_loss.cpu() / (data_len - int(local_cut))), \
+        np.exp(sentence_ppx_only_two_loss.cpu() / (data_len - int(only_two_cut))))
+    return np.exp(sentence_ppx_loss.cpu() / data_len), np.exp(sentence_ppx_word_loss.cpu() / (data_len- int(word_cut))), \
+        np.exp(sentence_ppx_local_loss.cpu() / (data_len - int(local_cut))), np.exp(sentence_ppx_only_two_loss.cpu() / \
+        (data_len - int(only_two_cut)))
 
 def main():
     config = Config('config.yml')
