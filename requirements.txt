@@ -33,7 +33,7 @@ idna==2.9
 imageio==2.6.1
 importlib-metadata==0.23
 itsdangerous==1.1.0
-Jinja2==2.10.3
+Jinja2==2.11.3
 jmespath==0.9.5
 joblib==0.14.1
 jsonschema==3.0.2
