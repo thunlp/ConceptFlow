@@ -5,7 +5,6 @@ This is the implementation of ConceptFlow described in ACL 2020 paper [Grounded 
 ### Prerequisites
 The recommended way to install the required packages is using pip and the provided `requirements.txt` file. Create the environment by running the following command:
 * Mac OS: `pip install -r requirements.txt`
-* Linux: Will be released soon.
 
 
 ### Download Dataset
