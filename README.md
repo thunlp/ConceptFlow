@@ -79,4 +79,4 @@ This code was based in part on the source code of [CCM](https://github.com/tuxch
 ### Contact
 If you have any question or suggestion, please send email to:
 
-```hzhan148@cs.brown.edu```
+```craigie.zhang@gmail.com```
