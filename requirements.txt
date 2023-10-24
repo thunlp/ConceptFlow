@@ -13,7 +13,7 @@ cloudpickle==1.1.1
 comet-git-pure==0.19.14
 comet-ml==3.0.2
 configobj==5.0.6
-cryptography==2.8
+cryptography==3.2
 cycler==0.10.0
 decorator==4.4.1
 dgl==0.4.3
